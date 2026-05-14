@@ -21,11 +21,11 @@
 #include "TMVA/Tools.h"
 #include "TMVA/TMVAGui.h"
 
-int HiggsAnalysis0jet(Tstring myMethodList = ""){
+Int_t HiggsAnalysis0jet(TString myMethodList = ""){
     // This initializes TMVA
    TMVA::Tools::Instance();
    //MVA methods
-   std::map<std::string,int> Use;
+   std::map<std::string,Int_t> Use;
 
    //Neural Networks
    Use["MLP"] = 1;
@@ -34,7 +34,7 @@ int HiggsAnalysis0jet(Tstring myMethodList = ""){
    Use["BDT"]=1;
 
    if (myMethodList!="") {
-    for (std::map<std::string,int>::iterator it = Use.begin(); it != Use.end(); it++) it->second = 0;
+    for (std::map<std::string,Int_t>::iterator it = Use.begin(); it != Use.end(); it++) it->second = 0;
 
       std::vector<TString> mlist = TMVA::gTools().SplitString( myMethodList, ',' );
       for (UInt_t i=0; i<mlist.size(); i++) {
@@ -42,7 +42,7 @@ int HiggsAnalysis0jet(Tstring myMethodList = ""){
 
          if (Use.find(regMethod) == Use.end()) {
             std::cout << "Method \"" << regMethod << "\" not known in TMVA under this name. Choose among the following:" << std::endl;
-            for (std::map<std::string,int>::iterator it = Use.begin(); it != Use.end(); it++) std::cout << it->first << " ";
+            for (std::map<std::string,Int_t>::iterator it = Use.begin(); it != Use.end(); it++) std::cout << it->first << " ";
             std::cout << std::endl;
             return 1;
          }
@@ -113,13 +113,41 @@ int HiggsAnalysis0jet(Tstring myMethodList = ""){
     
    
     //Spliting data to Training and Testing
-    dataloader->PrepareTrainingAndTestTree( mycuts, mycutb,
-                                        "nTrain_Signal=0:nTrain_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
+    dataloader->PrepareTrainingAndTestTree( mycuts, mycutb,"nTrain_Signal=0:nTrain_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
     //Booking Methods
+    //MLP
     if(Use["MLP"])
     factory->BookMethod(dataloader,TMVA::Types::kMLP,"MLP","H:!V:NeuronType = tanh: VarTransform = N: Ncycles = 600: HiddenLayers = N+5: TestRate = 5 :!UseRegulator");
 
-    //commment
+    //BDT
+    if (Use["BDT"])
+     factory->BookMethod( dataloader, TMVA::Types::kBDT, "BDT","!H:!V:NTrees=850:MinNodeSize=2.5%:MaxDepth=3:BoostType=AdaBoost:AdaBoostBeta=0.5:UseBaggedBoost:BaggedSampleFraction=0.5:SeparationType=GiniIndex:nCuts=20" );
+     
+     std::cout << "==> Training all methods..." << std::endl;
+     factory->TrainAllMethods();
+    
+     std::cout << "==> Testing all methods..." << std::endl;
+     factory->TestAllMethods();
+     
+     std::cout << "==> Evaluating all methods..." << std::endl;
+     factory->EvaluateAllMethods();
+    
 
-}
+     outputFile->Close();
+     std::cout << "==> Finished! Results saved in: " << outfileName << std::endl;
+    
+     //Deleting Memory
+     delete factory;
+     delete dataloader;
+
+     if (!gROOT->IsBatch()) TMVA::TMVAGui(outfileName);
+     return 0;
+    
+
+   }
+
+
+
+
+    
