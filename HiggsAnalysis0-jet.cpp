@@ -59,12 +59,16 @@ Int_t HiggsAnalysis0jet(TString myMethodList = ""){
    TMVA::DataLoader *dataloader = new TMVA::DataLoader("dataset");
 
    //pT
-     dataloader->AddVariable("sqrt(lep_pt[0]*lep_pt[0] + lep_pt[1]*lep_pt[1] + 2*lep_pt[0]*lep_pt[1]*cos(lep_phi[0]-lep_phi[1]))", "pT_mumu", "MeV", 'F');
+   //Defining pT Formula 
+   TString pT_Formula = "sqrt(lep_pt[0]*lep_pt[0] + lep_pt[1]*lep_pt[1] + 2*lep_pt[0]*lep_pt[1]*cos(lep_phi[0]-lep_phi[1]))";
+   dataloader->AddVariable(pT_Formula, "pT_mumu", "MeV", 'F');
 
     //Rapidity (Y_mumu)
     dataloader->AddVariable("(lep_eta[0]+lep_eta[1])/2.0", "Y_mumu", "", 'F');
 
     // Γ. Γωνία Collins-Soper (cos_theta_star)
+    //Defining m_mumu Formula
+    TString m_Formula = "sqrt(2*lep_pt[0]*lep_pt[1]*(cosh(lep_eta[0]-lep_eta[1])-cos(lep_phi[0]-lep_phi[1])))";
     //muon-pz (pz = pt * sinh(eta))
     TString pz0 = "(lep_pt[0]*sinh(lep_eta[0]))";
     TString pz1 = "(lep_pt[1]*sinh(lep_eta[1]))";
@@ -77,12 +81,11 @@ Int_t HiggsAnalysis0jet(TString myMethodList = ""){
     TString Pm1 = "(lep_e[1]-" + pz1 + ")";
     
     //paper: 2*(P1+*P2- - P1-*P2+) / sqrt(m^2 * (m^2 + pT^2)) * sign(pz_ll)
-    TString cosThetaFormula = "2*(" + Pp0 + "*" + Pm1 + " - " + Pm0 + "*" + Pp1 + ") / (sqrt(m_mumu*m_mumu * (m_mumu*m_mumu + pT_mumu*pT_mumu))) * (" + pzLL + "/abs(" + pzLL + "))";
-    
+    TString cosThetaFormula = "2*(" + Pp0 + "*" + Pm1 + " - " + Pm0 + "*" + Pp1 + ") / (sqrt(" + m_Formula + "*" + m_Formula + " * (" + m_Formula + "*" + m_Formula + " + " + pT_Formula + "*" + pT_Formula + "))) * (" + pzLL + "/abs(" + pzLL + "))";
     dataloader->AddVariable(cosThetaFormula, "cos_theta_star", "", 'F');
 
     //Spectators
-    dataloader->AddSpectator("m_mumu", 'F'); 
+    dataloader->AddSpectator(m_Formula, "m_mumu"); 
     dataloader->AddSpectator("eventNumber", 'L');
     dataloader->AddSpectator("jet_n", 'I');
 
@@ -108,7 +111,7 @@ Int_t HiggsAnalysis0jet(TString myMethodList = ""){
     dataloader -> AddBackgroundTree(Tree_backgZ,backg_weight);
     
     //Cuts 
-    TCut mycuts = "jet_n == 0 && m_mumu >= 120000 && m_mumu <=130000";
+    TCut mycuts = ("jet_n == 0 && " + m_Formula + " >= 120 && " + m_Formula + " <= 130").Data();
     TCut mycutb = mycuts;
     
    
@@ -118,7 +121,7 @@ Int_t HiggsAnalysis0jet(TString myMethodList = ""){
     //Booking Methods
     //MLP
     if(Use["MLP"])
-    factory->BookMethod(dataloader,TMVA::Types::kMLP,"MLP","H:!V:NeuronType = tanh: VarTransform = N: Ncycles = 600: HiddenLayers = N+5: TestRate = 5 :!UseRegulator");
+    factory->BookMethod(dataloader,TMVA::Types::kMLP,"MLP","H:!V:NeuronType=tanh:VarTransform=N:NCycles=600:HiddenLayers=N+5:TestRate=5:!UseRegulator");
 
     //BDT
     if (Use["BDT"])
